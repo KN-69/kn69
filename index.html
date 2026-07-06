@@ -41,8 +41,8 @@ textarea{resize:vertical;}
 .meal-row{display:flex; gap:6px; margin-bottom:6px;}
 .meal-row input{flex:1;}
 .meal-items{display:flex; flex-wrap:wrap; gap:5px; margin:4px 0 10px;}
-.meal-item{background:#f3f4f6; border-radius:8px; padding:4px 8px; font-size:13px;}
-.meal-item span{color:var(--red); margin-left:6px; cursor:pointer; font-weight:700;}
+.meal-item{background:#f3f4f6; border-radius:8px; padding:4px 8px; font-size:13px; cursor:pointer;}
+.meal-item .mi-x{color:var(--red); margin-left:6px; cursor:pointer; font-weight:700;}
 .slot-label{font-size:12px; font-weight:700; color:var(--text); margin-top:10px;}
 .advice{border-left:4px solid var(--blue); background:#eff6ff; border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:8px; line-height:1.5;}
 .advice.warn{border-color:var(--orange); background:#fffbeb;}
@@ -413,15 +413,23 @@ function renderMeals(d){
     sl.innerHTML='<div class="slot-label">'+label+'</div>';
     const items=document.createElement('div'); items.className='meal-items';
     d.meals[key].forEach((it,i)=>{
-      const s=document.createElement('span'); s.className='meal-item'; s.textContent=it;
-      const x=document.createElement('span'); x.textContent='×';
+      const s=document.createElement('span'); s.className='meal-item';
+      const t=document.createElement('span'); t.textContent=it;
+      t.onclick=()=>{
+        const v=prompt('内容を編集（空にすると削除）', it);
+        if(v===null) return;
+        const nv=v.trim();
+        if(nv==='') d.meals[key].splice(i,1); else d.meals[key][i]=nv;
+        save(); renderToday();
+      };
+      const x=document.createElement('span'); x.className='mi-x'; x.textContent='×';
       x.onclick=()=>{ d.meals[key].splice(i,1); save(); renderToday(); };
-      s.appendChild(x); items.appendChild(s);
+      s.appendChild(t); s.appendChild(x); items.appendChild(s);
     });
     const row=document.createElement('div'); row.className='meal-row';
     const inp=document.createElement('input'); inp.type='text'; inp.placeholder='食べた物を入力'; inp.enterKeyHint='done';
     const add=()=>{ const v=inp.value.trim(); if(!v)return; d.meals[key].push(v); inp.value=''; save(); renderToday(); };
-    inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); } };
+    inp.onkeydown=e=>{ if(e.key==='Enter') e.preventDefault(); };
     const b=document.createElement('button'); b.className='btn btn-primary btn-small'; b.textContent='追加'; b.onclick=add;
     row.appendChild(inp); row.appendChild(b);
     sl.appendChild(items); sl.appendChild(row);
