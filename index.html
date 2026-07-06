@@ -154,10 +154,20 @@ nav button .ico{font-size:20px; display:block; margin-bottom:2px;}
     </div>
     <div class="grid2">
       <div class="field"><label>筋肉量 kg</label><input type="number" step="0.01" inputmode="decimal" id="f_muscle"></div>
-      <div class="field"><label>体脂肪率 %</label><input type="number" step="0.1" inputmode="decimal" id="f_fat"></div>
-      <div class="field"><label>内臓脂肪</label><input type="number" step="0.5" inputmode="decimal" id="f_visceral"></div>
-      <div class="field"><label>皮下脂肪率 %</label><input type="number" step="0.1" inputmode="decimal" id="f_subfat"></div>
+      <div class="field"><label>脂肪率 %</label><input type="number" step="0.1" inputmode="decimal" id="f_fat"></div>
       <div class="field"><label>体水分率 %</label><input type="number" step="0.1" inputmode="decimal" id="f_water"></div>
+      <div class="field"><label>内臓脂肪</label><input type="number" step="0.5" inputmode="decimal" id="f_visceral"></div>
+      <div class="field"><label>骨量 kg</label><input type="number" step="0.01" inputmode="decimal" id="f_bone"></div>
+      <div class="field"><label>基礎代謝 kcal</label><input type="number" step="1" inputmode="decimal" id="f_bmr"></div>
+      <div class="field"><label>体年齢 歳</label><input type="number" step="1" inputmode="numeric" id="f_bodyage"></div>
+      <div class="field"><label>タンパク質 %</label><input type="number" step="0.1" inputmode="decimal" id="f_proteinp"></div>
+      <div class="field"><label>皮下脂肪率 %</label><input type="number" step="0.1" inputmode="decimal" id="f_subfat"></div>
+      <div class="field"><label>肥満レベル</label><input type="number" step="0.1" inputmode="decimal" id="f_obesity"></div>
+      <div class="field"><label>除脂肪体重 kg</label><input type="number" step="0.01" inputmode="decimal" id="f_leanmass"></div>
+      <div class="field"><label>標準体重 kg</label><input type="number" step="0.1" inputmode="decimal" id="f_stdweight"></div>
+      <div class="field"><label>骨格筋 %</label><input type="number" step="0.1" inputmode="decimal" id="f_skeletal"></div>
+      <div class="field"><label>筋肉率 %</label><input type="number" step="0.1" inputmode="decimal" id="f_musclerate"></div>
+      <div class="field"><label>ボディタイプ</label><input type="text" id="f_bodytype"></div>
       <div class="field"><label>睡眠 時間</label><input type="number" step="0.5" inputmode="decimal" id="f_sleep"></div>
     </div>
   </div>
@@ -294,6 +304,7 @@ const PRESET_EX = [
 ];
 function exPart(name){ const hit=PRESET_EX.find(([e])=>name.includes(e)||e.includes(name)); return hit?hit[1]:null; }
 function gymDone(d){ return !!(d&&d.gym&&((d.gym.sets&&d.gym.sets.length)||d.gym.parts.length||d.gym.menu)); }
+const BODY_NUM=[['f_weight','weight'],['f_muscle','muscle'],['f_fat','fat'],['f_water','water'],['f_visceral','visceral'],['f_bone','bone'],['f_bmr','bmr'],['f_bodyage','bodyAge'],['f_proteinp','proteinPct'],['f_subfat','subfat'],['f_obesity','obesity'],['f_leanmass','leanMass'],['f_stdweight','stdWeight'],['f_skeletal','skeletal'],['f_musclerate','muscleRate']];
 const SLOTS = [['breakfast','朝'],['lunch','昼'],['snack','間食'],['dinner','夜'],['late','寝る前']];
 const PROTEIN_MAP = [
   [/プロテインバー/,15],[/プロテイン/,25],[/ゆで卵|卵/,12],[/鶏胸|鶏むね|サラダチキン/,28],
@@ -338,8 +349,8 @@ function renderToday(){
   const d = getDay(cur);
   document.getElementById('recDate').value = cur;
   document.getElementById('dateNote').textContent = cur===today() ? '今日' : fmtD(cur);
-  setV('f_weight', d.body.weight); setV('f_muscle', d.body.muscle); setV('f_fat', d.body.fat);
-  setV('f_visceral', d.body.visceral); setV('f_subfat', d.body.subfat); setV('f_water', d.body.water);
+  BODY_NUM.forEach(([id,k])=>setV(id,d.body[k]));
+  document.getElementById('f_bodytype').value = d.body.bodyType||'';
   setV('f_sleep', d.sleep); document.getElementById('f_note').value = d.note||'';
   const r = document.getElementById('ritual'); r.checked = !!d.ritual;
   document.getElementById('ritualBox').classList.toggle('done', !!d.ritual);
@@ -610,6 +621,18 @@ function parseMetrics(text){
   out.subfat=inR(grab(t,'皮下脂肪率'),3,50);
   const t2=t.replace(/皮下脂肪率/g,'####');
   out.fat=inR(grab(t2,'脂肪率'),3,60);
+  out.bone=inR(grab(t,'骨量'),1,10);
+  out.bmr=inR(grab(t,'基礎代謝'),800,4000);
+  out.bodyAge=inR(grab(t,'体年齢'),10,100);
+  out.proteinPct=inR(grab(t,'タンパク質'),5,40);
+  out.obesity=inR(grab(t,'肥満レベル'),5,60);
+  out.leanMass=inR(grab(t,'除脂肪体重'),30,150);
+  out.stdWeight=inR(grab(t,'標準体重'),30,120);
+  out.skeletal=inR(grab(t,'骨格筋'),20,80);
+  const t3=t.replace(/筋肉率/g,'@@@@');
+  out.muscle=inR(grab(t3,'筋肉量'),30,110);
+  out.muscleRate=inR(grab(t,'筋肉率'),30,95);
+  const bt=t.match(/(\S+?タイプ)\s*ボディタイプ/); if(bt) out.bodyType=bt[1];
   const kgs=[];
   for(const m of t.matchAll(/(\d{2,3}\.\d{1,2})\s*(?:kg|㎏|Kg|KG)/g)){
     const v=parseFloat(m[1]);
@@ -853,7 +876,7 @@ function renderStats(){
   const ds=sortedDates().filter(x=>db.days[x].body.weight!=null);
   if(ds.length<2){ dt.innerHTML='<div class="small">2日分以上でここに変化が出る</div>'; return; }
   const a=db.days[ds[0]].body, b=db.days[ds[ds.length-1]].body;
-  const rows=[['体重','weight','kg'],['筋肉量','muscle','kg'],['体脂肪率','fat','%'],['内臓脂肪','visceral',''],['皮下脂肪率','subfat','%'],['体水分率','water','%']];
+  const rows=[['体重','weight','kg'],['筋肉量','muscle','kg'],['体脂肪率','fat','%'],['内臓脂肪','visceral',''],['皮下脂肪率','subfat','%'],['体水分率','water','%'],['除脂肪体重','leanMass','kg'],['骨格筋','skeletal','%'],['筋肉率','muscleRate','%'],['骨量','bone','kg'],['基礎代謝','bmr','kcal'],['体年齢','bodyAge','歳'],['タンパク質','proteinPct','%'],['肥満レベル','obesity','']];
   let html='<table><tr><th>項目</th><th>'+fmtD(ds[0])+'</th><th>'+fmtD(ds[ds.length-1])+'</th><th>変動</th></tr>';
   rows.forEach(([lbl,k,u])=>{
     if(a[k]==null&&b[k]==null) return;
@@ -905,6 +928,16 @@ function copySummary(){
     if(b.visceral!=null)bp.push('内臓脂肪'+b.visceral);
     if(b.subfat!=null)bp.push('皮下脂肪'+b.subfat+'%');
     if(b.water!=null)bp.push('体水分'+b.water+'%');
+    if(b.bone!=null)bp.push('骨量'+b.bone+'kg');
+    if(b.bmr!=null)bp.push('基礎代謝'+b.bmr+'kcal');
+    if(b.bodyAge!=null)bp.push('体年齢'+b.bodyAge+'歳');
+    if(b.proteinPct!=null)bp.push('タンパク質'+b.proteinPct+'%');
+    if(b.obesity!=null)bp.push('肥満レベル'+b.obesity);
+    if(b.leanMass!=null)bp.push('除脂肪体重'+b.leanMass+'kg');
+    if(b.stdWeight!=null)bp.push('標準体重'+b.stdWeight+'kg');
+    if(b.skeletal!=null)bp.push('骨格筋'+b.skeletal+'%');
+    if(b.muscleRate!=null)bp.push('筋肉率'+b.muscleRate+'%');
+    if(b.bodyType)bp.push('タイプ:'+b.bodyType);
     if(d.sleep!=null)bp.push('睡眠'+d.sleep+'h');
     if(bp.length)txt+='体組成: '+bp.join(' / ')+'\n';
     txt+='朝の儀式(プロテイン): '+(d.ritual?'○':'×')+'\n';
@@ -997,7 +1030,7 @@ function toast(msg){
 /* ---------- バインド ---------- */
 document.getElementById('recDate').onchange=e=>{ cur=e.target.value||today(); renderToday(); };
 document.getElementById('ritual').onchange=e=>{ getDay(cur).ritual=e.target.checked; save(); renderToday(); if(e.target.checked)toast('儀式クリア！今日の勝ち確定 💪'); };
-[['f_weight','weight'],['f_muscle','muscle'],['f_fat','fat'],['f_visceral','visceral'],['f_subfat','subfat'],['f_water','water']].forEach(([id,k])=>{
+BODY_NUM.forEach(([id,k])=>{
   document.getElementById(id).onchange=e=>{
     const v=e.target.value===''?null:parseFloat(e.target.value);
     const prevBest=k==='weight'?bestWeight(cur):null;
@@ -1005,6 +1038,7 @@ document.getElementById('ritual').onchange=e=>{ getDay(cur).ritual=e.target.chec
     if(k==='weight'&&v!=null&&prevBest!=null&&v<prevBest){ celebrate(); toast('🎉 自己ベスト更新! '+v.toFixed(2)+'kg'); }
   };
 });
+document.getElementById('f_bodytype').onchange=e=>{ getDay(cur).body.bodyType=e.target.value.trim()||null; save(); };
 document.getElementById('f_sleep').onchange=e=>{ getDay(cur).sleep=e.target.value===''?null:parseFloat(e.target.value); save(); };
 document.getElementById('f_gymmenu').onchange=e=>{ getDay(cur).gym.menu=e.target.value; save(); renderAdvice(getDay(cur)); renderGymWeekBadge(); };
 document.getElementById('f_note').onchange=e=>{ getDay(cur).note=e.target.value; save(); };
